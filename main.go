@@ -1,17 +1,35 @@
 package main
 
 import (
+	"embed"
+	"fmt"
+	"html/template"
 	"log"
+	"net/http"
 
-	"github.com/skutaada/gonergy/database"
-	"github.com/skutaada/gonergy/lib"
+	"github.com/skutaada/gonergy/router"
+)
+
+var (
+	//go:embed all:templates/*
+	templateFS embed.FS
+
+	html *template.Template
 )
 
 func main() {
-	if err := database.InitDB(); err != nil {
+	var err error
+	html, err = router.TemplateParseFSRecursive(templateFS, ".html", true, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	r := http.NewServeMux()
+	r.Handle("GET /", router.Handler(index))
+
+	fmt.Println("Listening on port 3000")
+
+	if err := http.ListenAndServe(":3000", r); err != nil {
 		log.Fatal(err)
 	}
-	defer database.DB.Close()
-
-	go lib.DailyFetchInsert()
 }
