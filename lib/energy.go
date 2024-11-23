@@ -53,3 +53,33 @@ func DailyFetchInsert() {
 		fmt.Println("Sucessfully saved the things")
 	}
 }
+
+func DailyFetchInsert2(c <-chan bool, done chan<- bool) {
+	for {
+		now := time.Now()
+		target := time.Date(now.Year(), now.Month(), now.Day(), 17, 15, 0, 0, now.Location())
+
+		if now.After(target) {
+			target = target.Add(24 * time.Hour)
+		}
+		waitDuration := target.Sub(now)
+		timer := time.NewTimer(waitDuration)
+
+		select {
+		case <-timer.C:
+			res, err := FetchLatestEnergy()
+			if err != nil {
+				fmt.Println(err)
+			}
+			if err := database.InsertEnergySpots(&res); err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println("Sucessfully saved the data from smartEnergy")
+		case <-c:
+			timer.Stop()
+			done <- true
+			fmt.Println("Gracefully shutdown Fetcher.")
+			return
+		}
+	}
+}
